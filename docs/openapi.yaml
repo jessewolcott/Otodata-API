@@ -1,0 +1,1313 @@
+openapi: "3.0.3"
+
+info:
+  title: Otodata Nee-Vo API
+  version: "29"
+  description: |
+    Web service for accessing Otodata Remote Tank Level Monitor (RTLM) readings
+    and managing devices.
+
+    **Authentication** — Every request (except `GET /devices/sample`) requires an
+    API key supplied as either:
+
+    - A query string parameter: `?k=YOUR_KEY`
+    - An HTTP header: `Authorization: Bearer YOUR_KEY`
+
+    API keys can be generated at https://neevo.otodata.ca/#/integrations/apikey
+
+    **Response format** — The API defaults to XML.  Add the header
+    `Accept: application/json; charset=utf-8` to receive JSON.
+
+    **Important implementation note** — The `createdispatch` and
+    `canceldispatch` endpoints are documented as `POST` in the original API
+    Blueprint but the live service only accepts `GET` for both.  This spec
+    reflects the live behaviour.
+
+  contact:
+    name: Otodata
+    url: https://neevo.otodata.ca
+
+servers:
+  - url: https://telematics.otodatanetwork.com:4431/v1.0/DataService.svc
+    description: Primary server (US/International)
+  - url: https://neevo.otodata.ca/public/api/v1/DataService.svc
+    description: Primary server (Canada)
+  - url: https://telematics02.otodatanetwork.com:4431/v1.0/DataService.svc
+    description: Secondary server (US/International failover)
+  - url: https://neevo2.otodata.ca/public/api/v1/DataService.svc
+    description: Secondary server (Canada failover)
+
+# ── Security ─────────────────────────────────────────────────────────────────
+
+security:
+  - bearerAuth: []
+  - apiKeyQuery: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Pass your API key as a Bearer token in the Authorization header.
+    apiKeyQuery:
+      type: apiKey
+      in: query
+      name: k
+      description: Pass your API key as the `k` query parameter.
+
+  # ── Reusable parameters ───────────────────────────────────────────────────
+
+  parameters:
+    deviceId:
+      name: id
+      in: path
+      required: true
+      description: Otodata module serial number (integer).
+      schema:
+        type: integer
+        format: int64
+      example: 20008447
+
+    sensorQuery:
+      name: sensor
+      in: query
+      required: false
+      description: "Sensor index (0-based). Default: 0."
+      schema:
+        type: integer
+        default: 0
+
+    pageQuery:
+      name: page
+      in: query
+      required: false
+      description: "Page index (0-based). Default: 0."
+      schema:
+        type: integer
+        default: 0
+
+  # ── Reusable schemas ──────────────────────────────────────────────────────
+
+  schemas:
+
+    Device:
+      type: object
+      description: A single Otodata Remote Tank Level Monitor (RTLM) module.
+      properties:
+        Id:
+          type: integer
+          format: int64
+          description: Device serial number.
+          example: 20008447
+        Name:
+          type: string
+          nullable: true
+          description: Customer-assigned device name.
+          example: "North Tank"
+        Address:
+          type: string
+          nullable: true
+          example: "123 Main St"
+        City:
+          type: string
+          nullable: true
+          example: "Montreal"
+        Region:
+          type: string
+          nullable: true
+          example: "QC"
+        Country:
+          type: string
+          nullable: true
+          example: "Canada"
+        PostalCode:
+          type: string
+          nullable: true
+          example: "H1A 1A1"
+        LastLevel:
+          type: number
+          format: float
+          description: Most recent tank level as a fraction (0.0–1.0).
+          example: 0.6543
+        Inventory:
+          type: number
+          format: float
+          description: Calculated inventory in the tank's configured unit.
+          example: 654.3
+        Capacity:
+          type: number
+          format: float
+          description: Tank capacity in the configured unit.
+          example: 1000
+        Status:
+          type: string
+          description: Device status string (e.g. "OK", "LowBattery").
+          example: "OK"
+        LastRead:
+          type: string
+          format: date-time
+          description: UTC timestamp of the most recent reading.
+          example: "2026-04-24T10:00:00Z"
+        LastFill:
+          type: string
+          format: date-time
+          nullable: true
+          description: UTC timestamp of the most recent fill event.
+          example: "2026-03-01T08:00:00Z"
+        Product:
+          type: string
+          nullable: true
+          description: Product type stored in the tank (e.g. "Propane").
+          example: "Propane"
+        BatteryAlarm:
+          type: boolean
+          example: false
+        BatteryLevel:
+          type: number
+          format: float
+          description: Battery voltage.
+          example: 3.6
+        IsInstalled:
+          type: boolean
+          description: Whether the device is currently installed at a site.
+          example: true
+        SensorTrouble:
+          type: integer
+          description: Sensor trouble code (0 = no trouble).
+          example: 0
+        SignalStrength:
+          type: integer
+          description: Cellular signal strength (0–100).
+          example: 85
+        Temperature:
+          type: number
+          format: float
+          description: Ambient temperature at the device (Celsius).
+          example: 20.5
+        Ullage:
+          type: number
+          format: float
+          description: Empty space remaining in the tank.
+          example: 346
+        HoursToEmpty:
+          type: integer
+          description: Estimated hours until the tank is empty based on usage rate.
+          example: 720
+        HoursToOptimalFill:
+          type: integer
+          description: Estimated hours until the optimal fill point is reached.
+          example: 336
+        Route:
+          type: string
+          nullable: true
+          description: Customer-assigned delivery route.
+          example: "Route A"
+        TankFormType:
+          type: integer
+          description: Numeric identifier for the tank geometry/calibration curve.
+          example: 0
+        TankFormatName:
+          type: string
+          nullable: true
+          description: Human-readable tank geometry name.
+          example: "Propane 1000 gal"
+        TankName:
+          type: string
+          nullable: true
+          example: "Main Tank"
+        TankNumber:
+          type: string
+          nullable: true
+          example: "T001"
+        TankSerialNumber:
+          type: string
+          nullable: true
+          example: "SN12345"
+        CustomerId:
+          type: string
+          nullable: true
+          description: Customer's own internal customer identifier.
+          example: "CUST001"
+        IsOnCall:
+          type: boolean
+          example: false
+        LocationName:
+          type: string
+          nullable: true
+          example: "Site A"
+        LocationNumber:
+          type: string
+          nullable: true
+          example: "LOC001"
+        SensorIndex:
+          type: integer
+          description: Sensor index (present in single-device responses).
+          example: 0
+
+    DeviceUpdate:
+      type: object
+      description: |
+        Fields that may be updated via UpdateDevice.  All fields are optional —
+        include only the properties you wish to change.
+      properties:
+        Name:
+          type: string
+          example: "North Tank"
+        TankFormatName:
+          type: string
+          example: "Propane 1000 gal"
+        Address:
+          type: string
+          example: "123 Main St"
+        City:
+          type: string
+          example: "Montreal"
+        Region:
+          type: string
+          example: "QC"
+        Country:
+          type: string
+          example: "Canada"
+        PostalCode:
+          type: string
+          example: "H1A 1A1"
+        CustomerId:
+          type: string
+          example: "CUST001"
+        DatabaseId:
+          type: string
+          example: "DB001"
+        Email:
+          type: string
+          format: email
+          example: "customer@example.com"
+        GeneralLedgerLocation:
+          type: string
+          example: "GL001"
+        IsInstalled:
+          type: boolean
+          example: true
+        Latitude:
+          type: number
+          format: double
+          example: 45.5017
+        Longitude:
+          type: number
+          format: double
+          example: -73.5673
+        Note:
+          type: string
+          example: "Additional notes"
+        Product:
+          type: string
+          example: "Propane"
+        Route:
+          type: string
+          example: "Route A"
+        TankName:
+          type: string
+          example: "Main Tank"
+        TankNumber:
+          type: string
+          example: "T001"
+        TankSerialNumber:
+          type: string
+          example: "SN12345"
+        IsOnCall:
+          type: boolean
+          example: false
+        LocationName:
+          type: string
+          example: "Site A"
+        LocationNumber:
+          type: string
+          example: "LOC001"
+
+    Warranty:
+      type: object
+      properties:
+        WarrantyType:
+          type: string
+          description: |
+            Warranty type code.
+            0 = Standard, 1 = Extended, 2 = BatteryPackOnly.
+          enum: ["Standard", "Extended", "BatteryPackOnly"]
+          example: "Standard"
+        WarrantyStatus:
+          type: string
+          description: |
+            Warranty status code.
+            2 = NotStarted, 3 = Expired, 4 = Active, 6 = Voided, 7 = Archived.
+          enum: ["NotStarted", "Expired", "Active", "Voided", "Archived"]
+          example: "Active"
+        WarrantyStartDate:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        WarrantyEndDate:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+
+    TankLevelLog:
+      type: object
+      properties:
+        Id:
+          type: integer
+          format: int64
+          description: Device serial number for this log entry.
+          example: 20008447
+        Level:
+          type: number
+          format: float
+          description: Tank level as a fraction (0.0–1.0).
+          example: 0.6543
+        LogDateUtc:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00Z"
+        BatteryLevel:
+          type: number
+          format: float
+          example: 3.6
+        SensorTrouble:
+          type: integer
+          example: 0
+        Temperature:
+          type: number
+          format: float
+          example: 20.5
+        SignalStrength:
+          type: integer
+          example: 85
+        Value:
+          type: integer
+          description: Raw sensor value.
+          example: 6543
+        ValueType:
+          type: integer
+          description: Raw value type code.
+          example: 0
+
+    TankLevelResponse:
+      type: object
+      properties:
+        Count:
+          type: integer
+          example: 2
+        StartDateUtc:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        EndDateUtc:
+          type: string
+          format: date-time
+          example: "2025-01-31T23:59:59Z"
+        Id:
+          type: integer
+          format: int64
+          description: Device serial number (present in device-specific responses).
+          example: 20008447
+        Supplier:
+          type: string
+          example: "OTODATA"
+        Logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/TankLevelLog"
+
+    ReturnRequestItem:
+      type: object
+      properties:
+        SerialNumber:
+          type: integer
+          format: int64
+          example: 20008447
+        Status:
+          type: integer
+          description: Item status code.
+          example: 0
+        SensorStatus:
+          type: string
+          example: "OK"
+        SensorTrouble:
+          type: integer
+          example: 0
+        LastActivityDate:
+          type: string
+          format: date-time
+          example: "2026-01-10T10:00:00Z"
+        WarrantyStatus:
+          type: integer
+          description: |
+            2 = NotStarted, 3 = Expired, 4 = Active, 6 = Voided, 7 = Archived.
+          example: 4
+        RefusalReason:
+          type: string
+          nullable: true
+          example: null
+
+    ReturnRequest:
+      type: object
+      properties:
+        CompanyName:
+          type: string
+          example: "ACME Corp"
+        ReturnRequestNumber:
+          type: string
+          example: "RR00001"
+        RmaNumber:
+          type: string
+          nullable: true
+          example: "RMA001"
+        CreatedDate:
+          type: string
+          format: date-time
+          example: "2026-01-15T10:00:00Z"
+        DeviceCount:
+          type: integer
+          example: 2
+        Status:
+          type: integer
+          example: 0
+        RequesterName:
+          type: string
+          nullable: true
+          example: "John Doe"
+        RequesterEmail:
+          type: string
+          format: email
+          nullable: true
+          example: "john.doe@example.com"
+        Comment:
+          type: string
+          nullable: true
+          example: "Faulty devices"
+        StreetAddress:
+          type: string
+          nullable: true
+          example: "123 Main St"
+        City:
+          type: string
+          nullable: true
+          example: "Montreal"
+        PostalCode:
+          type: string
+          nullable: true
+          example: "H1A 1A1"
+        Region:
+          type: string
+          nullable: true
+          example: "QC"
+        Country:
+          type: string
+          nullable: true
+          example: "Canada"
+        ReturnRequestItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnRequestItem"
+
+    RmaItem:
+      type: object
+      properties:
+        UpdatedDate:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-01-20T10:00:00Z"
+        SerialNumber:
+          type: integer
+          format: int64
+          example: 20008447
+        WarrantyStatus:
+          type: integer
+          example: 4
+        Status:
+          type: integer
+          example: 0
+        Conclusion:
+          type: string
+          nullable: true
+          example: null
+        Trouble:
+          type: string
+          nullable: true
+          example: null
+        Replacement:
+          type: string
+          nullable: true
+          example: null
+        ReturnAddress:
+          type: string
+          nullable: true
+          example: "123 Main St"
+        IsReconciled:
+          type: boolean
+          example: false
+        CustomerComment:
+          type: string
+          nullable: true
+          example: null
+        Route:
+          type: string
+          nullable: true
+          example: "Route A"
+
+    Rma:
+      type: object
+      properties:
+        RmaNumber:
+          type: string
+          example: "RMA001"
+        CreatedDate:
+          type: string
+          format: date-time
+          example: "2026-01-15T10:00:00Z"
+        IsComplete:
+          type: boolean
+          example: false
+        RmaItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/RmaItem"
+
+    GasMeter:
+      type: object
+      properties:
+        AccountNumber:
+          type: string
+          example: "ACCT001"
+        TankNumber:
+          type: string
+          example: "T001"
+        SerialNumber:
+          type: integer
+          format: int64
+          example: 20008447
+        IndexInitialValue:
+          type: number
+          format: float
+          example: 1000.0
+        IndexFinalValue:
+          type: number
+          format: float
+          example: 1250.0
+        PulseRate:
+          type: number
+          format: float
+          example: 0.1
+        Volume:
+          type: number
+          format: float
+          example: 25.0
+        Units:
+          type: string
+          example: "cubic meters"
+
+    GasMeterResponse:
+      type: object
+      properties:
+        Count:
+          type: integer
+          example: 1
+        StartDateUtc:
+          type: string
+          format: date-time
+          example: "2025-01-15T00:00:00Z"
+        EndDateUtc:
+          type: string
+          format: date-time
+          example: "2025-02-15T00:00:00Z"
+        Supplier:
+          type: string
+          example: "OTODATA"
+        Meters:
+          type: array
+          items:
+            $ref: "#/components/schemas/GasMeter"
+
+    ErrorResponse:
+      type: object
+      properties:
+        Errors:
+          type: array
+          items:
+            type: object
+            properties:
+              Property:
+                type: string
+                description: Field that failed validation.
+                example: "Name"
+              Message:
+                type: string
+                description: Human-readable error description.
+                example: "Name is too long."
+
+  # ── Reusable responses ────────────────────────────────────────────────────
+
+  responses:
+    400BadRequest:
+      description: "Bad request — a required parameter is missing, invalid, or malformed."
+    403Forbidden:
+      description: "Forbidden — the API key is missing or invalid."
+    404NotFound:
+      description: "Not found — the requested resource does not exist."
+    UpdateSuccess:
+      description: "Success. Returns an Errors array (empty when no errors occurred)."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            Errors: []
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+
+paths:
+
+  # ── Devices ──────────────────────────────────────────────────────────────
+
+  /devices:
+    get:
+      operationId: GetDevices
+      summary: Get all devices
+      tags: [Devices]
+      description: |
+        Returns a list of all modules linked to the authenticated company.
+
+        Optionally pass `lastDateUtc` to filter for devices that have reported
+        since that timestamp (useful for incremental syncs).
+      parameters:
+        - name: lastDateUtc
+          in: query
+          required: false
+          description: |
+            ISO8601 UTC date filter.  Only return devices that have reported
+            *after* this timestamp.  Example: `2026-01-01T00:00:00Z`.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Array of device objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Device"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /devices/sample:
+    get:
+      operationId: GetSampleDevice
+      summary: Get sample device (no auth required)
+      tags: [Devices]
+      description: |
+        Returns a single dummy module populated with synthetic data.  Useful
+        for testing client parsing logic without a live API key.  Authentication
+        is **not** required for this endpoint.
+      security: []
+      responses:
+        "200":
+          description: A synthetic device object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+              example:
+                Id: 999999
+                Name: "Sample Device"
+                LastLevel: 0.5
+                Inventory: 500
+                Capacity: 1000
+                Status: "OK"
+
+  /devices/{id}:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+      - $ref: "#/components/parameters/sensorQuery"
+
+    get:
+      operationId: GetDevice
+      summary: Get a single device
+      tags: [Devices]
+      description: Returns a single module by its serial number.
+      responses:
+        "200":
+          description: Device object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+    post:
+      operationId: UpdateDevice
+      summary: Update device properties
+      tags: [Devices]
+      description: |
+        Modifies a module's customer-configurable properties.  Only include
+        fields you want to change — omitted fields are left unchanged.
+
+        Pass `enforceValidation=true` to abort the entire update if any single
+        field fails validation; the response will include field-level error
+        details in that case.
+      parameters:
+        - name: enforceValidation
+          in: query
+          required: false
+          description: |
+            When `true`, the update is atomic — all fields succeed or none do.
+            Error details are returned when validation fails.
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUpdate"
+            example:
+              Name: "North Tank"
+              Route: "Route 1"
+              Product: "Propane"
+      responses:
+        "200":
+          $ref: "#/components/responses/UpdateSuccess"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+  /devices/{id}/warranties:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+
+    get:
+      operationId: GetDeviceWarranties
+      summary: Get device warranties
+      tags: [Devices]
+      description: |
+        Returns the complete warranty history for a module, ordered newest
+        to oldest.
+
+        **WarrantyType codes:** 0 = Standard, 1 = Extended, 2 = BatteryPackOnly
+
+        **WarrantyStatus codes:** 2 = NotStarted, 3 = Expired, 4 = Active,
+        6 = Voided, 7 = Archived
+      responses:
+        "200":
+          description: Array of warranty records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Warranty"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+  /devices/{id}/reset:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+
+    post:
+      operationId: ResetDevice
+      summary: Reset device customer data
+      tags: [Devices]
+      description: |
+        **Destructive operation.** Clears all customer-assigned data for a
+        device from the Nee-Vo database (name, address, route, notes, etc.).
+
+        Pass an `Exclude` array to preserve specific properties.  For example,
+        to keep the device name and tank serial number:
+
+        ```json
+        { "Exclude": ["Name", "TankSerialNumber"] }
+        ```
+
+        An empty request body resets *all* customer fields.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Exclude:
+                  type: array
+                  description: Property names to leave unchanged.
+                  items:
+                    type: string
+                  example: ["Name", "TankSerialNumber"]
+      responses:
+        "200":
+          description: Reset successful. Response body is empty.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+  /devices/{id}/createdispatch:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+      - $ref: "#/components/parameters/sensorQuery"
+
+    get:
+      operationId: CreateDispatch
+      summary: Create a dispatch
+      tags: [Devices]
+      description: |
+        Creates a dispatch for a device.  This action:
+
+        - Sends a push notification to end-users who have notifications enabled
+        - Fires any configured integration events
+
+        > **Note:** The official API Blueprint documents this as `POST`, but
+        > the live service returns HTTP 405 for POST and only accepts `GET`.
+        > This spec reflects the live behaviour.
+      responses:
+        "200":
+          description: Dispatch created. Response body is empty.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+  /devices/{id}/canceldispatch:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+      - $ref: "#/components/parameters/sensorQuery"
+
+    get:
+      operationId: CancelDispatch
+      summary: Cancel a dispatch
+      tags: [Devices]
+      description: |
+        Cancels an active dispatch for a device.  No push notification is sent,
+        but integration events are fired if configured.
+
+        > **Note:** The official API Blueprint documents this as `POST`, but
+        > the live service returns HTTP 405 for POST and only accepts `GET`.
+        > This spec reflects the live behaviour.
+      responses:
+        "200":
+          description: Dispatch cancelled. Response body is empty.
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          $ref: "#/components/responses/404NotFound"
+
+  # ── Tank Levels ───────────────────────────────────────────────────────────
+
+  /tanklevels:
+    get:
+      operationId: GetTankLevels
+      summary: Get tank level history (all devices)
+      tags: [Tank Levels]
+      description: |
+        Gets historical level readings for **all** modules linked to the
+        company, within the specified date range.
+
+        Results are paginated at **10,000 readings per page**.  Use the `page`
+        parameter (0-based) to retrieve subsequent pages.
+      parameters:
+        - name: startDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC start date. Example: `2025-01-01T00:00:00Z`"
+          schema:
+            type: string
+            format: date-time
+        - name: endDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC end date. Example: `2025-01-31T23:59:59Z`"
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/pageQuery"
+      responses:
+        "200":
+          description: Tank level history object containing a `Logs` array.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TankLevelResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          description: "Missing or invalid `startDateUtc` / `endDateUtc`."
+
+  /devices/{id}/tanklevels:
+    parameters:
+      - $ref: "#/components/parameters/deviceId"
+      - $ref: "#/components/parameters/sensorQuery"
+
+    get:
+      operationId: GetDeviceTankLevels
+      summary: Get tank level history (single device)
+      tags: [Tank Levels]
+      description: |
+        Gets historical level readings for a **single** module within the
+        specified date range.  Results are not paginated for this endpoint.
+      parameters:
+        - name: startDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC start date. Example: `2025-01-01T00:00:00Z`"
+          schema:
+            type: string
+            format: date-time
+        - name: endDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC end date. Example: `2025-01-31T23:59:59Z`"
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Tank level history object for the specified device.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TankLevelResponse"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          description: "Missing or invalid `id`, `startDateUtc`, or `endDateUtc`."
+
+  # ── Reports ───────────────────────────────────────────────────────────────
+
+  /downloadReport:
+    get:
+      operationId: DownloadReport
+      summary: Download summary report
+      tags: [Reports]
+      description: |
+        Downloads a snapshot summary report as a binary file.
+
+        **Supported formats:**
+
+        | Value | Extension | Description |
+        |---|---|---|
+        | `Excel` | `.xlsx` | Default. Full formatted spreadsheet. |
+        | `CSV` | `.csv` | Comma-separated values, importable to any tool. |
+        | `SuburbanSoftware` | `.csv` | Format compatible with Suburban Software dispatch systems. |
+
+        A `204 No Content` response indicates the account has no reportable data.
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Report format. Default: `Excel`."
+          schema:
+            type: string
+            enum: [Excel, CSV, SuburbanSoftware]
+            default: Excel
+        - name: excludeNonInstalled
+          in: query
+          required: false
+          description: Exclude devices with `IsInstalled = false` from the report.
+          schema:
+            type: boolean
+        - name: includeSubCompanies
+          in: query
+          required: false
+          description: Include devices belonging to sub-company accounts.
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Report file byte stream.
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+        "204":
+          description: No reportable data available.
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  # ── Return Requests ───────────────────────────────────────────────────────
+
+  /returnRequests:
+    get:
+      operationId: GetReturnRequests
+      summary: List return requests
+      tags: [Return Requests]
+      description: |
+        Gets return requests and their associated line items linked to the
+        company.  Results are paginated at **100 records per page**
+        (or 10,000 if the per-account setting is not configured).
+
+        Set `isOpen=true` for pending requests and `isOpen=false` for
+        completed/archived requests.
+      parameters:
+        - name: isOpen
+          in: query
+          required: true
+          description: "`true` = open/pending, `false` = completed."
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/pageQuery"
+      responses:
+        "200":
+          description: Array of return request objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReturnRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /returnRequests/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Return request number. Example `RR00001`.
+        schema:
+          type: string
+
+    get:
+      operationId: GetReturnRequest
+      summary: Get a single return request
+      tags: [Return Requests]
+      description: Gets a single return request by its identifier, including all line items.
+      responses:
+        "200":
+          description: Return request object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnRequest"
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+    post:
+      operationId: UpdateReturnRequest
+      summary: Update return request comment
+      tags: [Return Requests]
+      description: |
+        Modifies the comment field of a return request.  This is the only
+        customer-writable field on a return request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [Comment]
+              properties:
+                Comment:
+                  type: string
+                  description: New comment text (max 2048 characters).
+                  example: "Devices shipped 2026-05-14 via FedEx tracking #XXXX"
+      responses:
+        "200":
+          $ref: "#/components/responses/UpdateSuccess"
+        "400":
+          description: "Invalid `id` format, or no updatable fields provided."
+        "403":
+          description: "API key missing/invalid, or client not found."
+
+  # ── RMAs ──────────────────────────────────────────────────────────────────
+
+  /rmas:
+    get:
+      operationId: GetRmas
+      summary: List RMAs
+      tags: [RMAs]
+      description: |
+        Gets a list of RMAs and their associated items linked to the company.
+        Results are paginated at **100 records per page**.
+
+        Set `isOpen=true` for in-progress RMAs and `isOpen=false` for
+        completed RMAs.
+      parameters:
+        - name: isOpen
+          in: query
+          required: true
+          description: "`true` = open/in-progress, `false` = completed."
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/pageQuery"
+      responses:
+        "200":
+          description: Array of RMA objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rma"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /rmas/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: "RMA number. Example: `RMA001`."
+        schema:
+          type: string
+
+    get:
+      operationId: GetRma
+      summary: Get a single RMA
+      tags: [RMAs]
+      description: Gets a single RMA and all of its associated line items.
+      responses:
+        "200":
+          description: RMA object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rma"
+        "403":
+          description: "API key or RMA ID missing or invalid."
+
+  /rmaItems/{rmaId}/devices/{deviceId}:
+    parameters:
+      - name: rmaId
+        in: path
+        required: true
+        description: "RMA number. Example: `RMA001`."
+        schema:
+          type: string
+      - name: deviceId
+        in: path
+        required: true
+        description: "Device serial number. Example: `20008447`."
+        schema:
+          type: integer
+          format: int64
+
+    post:
+      operationId: UpdateRmaItem
+      summary: Update an RMA line item
+      tags: [RMAs]
+      description: |
+        Updates the reconciliation status and/or customer comment on a specific
+        RMA line item.  At least one of `IsReconciled` or `CustomerComment`
+        must be provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                IsReconciled:
+                  type: boolean
+                  description: Mark the item as reconciled (true) or not (false).
+                  example: true
+                CustomerComment:
+                  type: string
+                  description: Customer comment on the RMA item (max 2048 chars).
+                  example: "Confirmed received 2026-05-14 via courier"
+      responses:
+        "200":
+          $ref: "#/components/responses/UpdateSuccess"
+        "400":
+          description: "Invalid `id` format, nothing to update, or RMA ID missing."
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  # ── Gas Meters ────────────────────────────────────────────────────────────
+
+  /meters:
+    get:
+      operationId: GetGasMeters
+      summary: Get gas meter readings
+      tags: [Gas Meters]
+      description: |
+        Gets historical volumetric readings for all modules equipped with a
+        gas meter sensor.  Results are paginated at **10,000 records per page**.
+      parameters:
+        - name: startDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC start date. Example: `2025-01-15T00:00:00Z`"
+          schema:
+            type: string
+            format: date-time
+        - name: endDateUtc
+          in: query
+          required: true
+          description: "ISO8601 UTC end date. Example: `2025-02-15T00:00:00Z`"
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/pageQuery"
+      responses:
+        "200":
+          description: Gas meter response object containing a `Meters` array.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GasMeterResponse"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          description: "Missing or invalid `startDateUtc` / `endDateUtc`."
+
+# ── Tag descriptions ──────────────────────────────────────────────────────────
+
+tags:
+  - name: Devices
+    description: |
+      Core device management — list, inspect, update, reset, and dispatch
+      operations for Otodata RTLM modules.
+  - name: Tank Levels
+    description: |
+      Historical tank level readings, either across all devices or for a
+      specific device.
+  - name: Reports
+    description: Downloadable summary reports in Excel, CSV, or Suburban Software format.
+  - name: Return Requests
+    description: |
+      Customer-initiated return requests and their associated device line items.
+  - name: RMAs
+    description: |
+      Return Merchandise Authorizations (RMAs) issued by Otodata, including
+      reconciliation and comment tracking.
+  - name: Gas Meters
+    description: Historical volumetric readings from devices equipped with gas meter sensors.

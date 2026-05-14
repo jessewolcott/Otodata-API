@@ -1,0 +1,648 @@
+﻿{
+  "info": {
+    "name": "Otodata Nee-Vo API v29",
+    "description": "Web service for accessing Otodata Remote Tank Level Monitor (RTLM) readings. Modified: April 24, 2026.\n\n**Authentication:** Set the `API_KEY` collection variable to your API key. All requests use Bearer token auth via the Authorization header.\n\n**Base URL:** Set the `baseUrl` collection variable. Defaults to primary server.\n\n**Primary Servers:**\n- https://telematics.otodatanetwork.com:4431\n- https://neevo.otodata.ca\n\n**Secondary Servers:**\n- https://telematics02.otodatanetwork.com:4431\n- https://neevo2.otodata.ca",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 29,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://telematics.otodatanetwork.com:4431",
+      "type": "string",
+      "description": "Primary server base URL. Alternatives: https://neevo.otodata.ca, https://telematics02.otodatanetwork.com:4431 (secondary), https://neevo2.otodata.ca (secondary)"
+    },
+    {
+      "key": "API_KEY",
+      "value": "YOUR_API_KEY_HERE",
+      "type": "string",
+      "description": "Your Otodata Nee-Vo API Key. Generate at: https://neevo.otodata.ca/#/integrations/apikey"
+    },
+    {
+      "key": "deviceId",
+      "value": "123456",
+      "type": "string",
+      "description": "Default device serial number for requests"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{API_KEY}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Devices",
+      "description": "Endpoints for managing RTLM devices/modules.",
+      "item": [
+        {
+          "name": "GetDevices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices"],
+              "query": [
+                {
+                  "key": "lastDateUtc",
+                  "value": "",
+                  "description": "ISO8601 UTC date filter. Example: 2018-11-22T13:00:00Z. Only return devices updated after this date.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a list of all modules linked to the authenticated company. Optionally filter by `lastDateUtc` to return only devices updated after that timestamp.\n\n**Responses:**\n- 200 OK: Array of Device objects\n- 400 Bad Request: `lastDateUtc` does not follow ISO8601 format\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "GetDevice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}"],
+              "query": [
+                {
+                  "key": "sensor",
+                  "value": "0",
+                  "description": "Sensor index (0-based). Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a single module by its serial number.\n\n**URL Parameters:**\n- `deviceId`: Integer device serial number (required)\n- `sensor`: Sensor index, 0-based (optional, default: 0)\n\n**Responses:**\n- 200 OK: Device object\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "GetSampleDevice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/sample",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "sample"]
+            },
+            "description": "Returns a dummy module for testing. No authentication required.\n\n**Responses:**\n- 200 OK: Device object (sample data)"
+          },
+          "response": []
+        },
+        {
+          "name": "GetDeviceWarranties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}/warranties",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}", "warranties"]
+            },
+            "description": "Returns the warranty history for a module, ordered newest to oldest.\n\n**Responses:**\n- 200 OK: List of DeviceWarranty objects\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid\n\n**WarrantyStatus values:** 0=Unknown(Obsolete), 1=NoWarranty(Obsolete), 2=NotStarted, 3=Expired, 4=Active, 5=BatteryWarrantyOnly(Obsolete), 6=Voided, 7=Archived\n\n**WarrantyType values:** 0=Standard, 1=Extended, 2=BatteryPackOnly"
+          },
+          "response": []
+        },
+        {
+          "name": "UpdateDevice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}"],
+              "query": [
+                {
+                  "key": "sensor",
+                  "value": "0",
+                  "description": "Sensor index (0-based). Default: 0",
+                  "disabled": true
+                },
+                {
+                  "key": "enforceValidation",
+                  "value": "true",
+                  "description": "If true, cancels the whole update if any field cannot be updated. Also returns error details.",
+                  "disabled": true
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Name\": \"Demo name for tank #123456\",\n  \"TankFormatName\": \"Propane 1000 gal\",\n  \"Address\": \"123 Main St\",\n  \"City\": \"Montreal\",\n  \"Region\": \"QC\",\n  \"Country\": \"Canada\",\n  \"PostalCode\": \"H1A 1A1\",\n  \"CustomerId\": \"CUST001\",\n  \"DatabaseId\": \"DB001\",\n  \"Email\": \"customer@example.com\",\n  \"GeneralLedgerLocation\": \"GL001\",\n  \"IsInstalled\": true,\n  \"Latitude\": 45.5017,\n  \"Longitude\": -73.5673,\n  \"Note\": \"Additional notes\",\n  \"Product\": \"Propane\",\n  \"Route\": \"Route A\",\n  \"TankName\": \"Main Tank\",\n  \"TankNumber\": \"T001\",\n  \"TankSerialNumber\": \"SN12345\",\n  \"IsOnCall\": false,\n  \"LocationName\": \"Site A\",\n  \"LocationNumber\": \"LOC001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Modifies a module's properties.\n\n**Notes:**\n- Each tank format may be associated to a specific product. To assign a tank format, both must be associated to the same product.\n- Associating a `TankFormatName` automatically sets: Capacity, TankFormType, MeasureDepth, MeasureHeight, MeasureWidth, Offset, TareWeight, MaxUllage.\n- Capacity can only be set directly if device has no tank format.\n- Updating Product to a different value unassigns the tank format.\n- For hydrostatic sensors, product density must be 0.3–2.0 g/cm³.\n\n**Responses:**\n- 200 OK: DeviceUpdateResult object\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "ResetDevice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}", "reset"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Exclude\": [\"Name\", \"TankSerialNumber\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Clears all customer data from the Nee-Vo database for a device. The `Exclude` array lists Device model property names to preserve (not reset).\n\n**Responses:**\n- 200 OK: Empty body\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "CreateDispatch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}/createdispatch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}", "createdispatch"],
+              "query": [
+                {
+                  "key": "sensor",
+                  "value": "0",
+                  "description": "Sensor index (0-based). Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Creates a dispatch for a device. Sends push notifications to end-users with notifications enabled. Also triggers integration events if enabled.\n\n**Responses:**\n- 200 OK: Empty body\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "CancelDispatch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}/canceldispatch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}", "canceldispatch"],
+              "query": [
+                {
+                  "key": "sensor",
+                  "value": "0",
+                  "description": "Sensor index (0-based). Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Cancels a dispatch for a device. No push notification is sent to the end-user. Triggers integration events if enabled.\n\n**Responses:**\n- 200 OK: Empty body\n- 400 Bad Request: `id` is not an integer\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id` is missing or invalid"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tank Levels",
+      "description": "Endpoints for retrieving historical tank level readings.",
+      "item": [
+        {
+          "name": "GetTankLevels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/tanklevels?startDateUtc=2024-01-01T00:00:00Z&endDateUtc=2024-01-31T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "tanklevels"],
+              "query": [
+                {
+                  "key": "startDateUtc",
+                  "value": "2024-01-01T00:00:00Z",
+                  "description": "ISO8601 UTC start date (required). Example: 2018-04-25T08:30:00Z"
+                },
+                {
+                  "key": "endDateUtc",
+                  "value": "2024-01-31T23:59:59Z",
+                  "description": "ISO8601 UTC end date (required). Example: 2019-01-10T20:30:00Z"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page index (0-based). Max 10,000 readings per page. Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets historical level readings for all modules linked to the company. Results are paginated at 10,000 readings per page.\n\n**Responses:**\n- 200 OK: TankLevels object\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `startDateUtc` or `endDateUtc` missing or invalid\n\n**ValueType values:**\n- 0 = Percentage (value ÷ 100 = %)\n- 1 = Distance in mm (value ÷ 1000 = meters)\n- 2 = Quantity (counter)\n- 3 = Temperature in deciKelvin (value ÷ 10 − 273.15 = °C)"
+          },
+          "response": []
+        },
+        {
+          "name": "GetDeviceTankLevels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/devices/{{deviceId}}/tanklevels?startDateUtc=2024-01-01T00:00:00Z&endDateUtc=2024-01-31T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "devices", "{{deviceId}}", "tanklevels"],
+              "query": [
+                {
+                  "key": "startDateUtc",
+                  "value": "2024-01-01T00:00:00Z",
+                  "description": "ISO8601 UTC start date (required). Example: 2018-04-25T08:30:00Z"
+                },
+                {
+                  "key": "endDateUtc",
+                  "value": "2024-01-31T23:59:59Z",
+                  "description": "ISO8601 UTC end date (required). Example: 2019-01-10T20:30:00Z"
+                },
+                {
+                  "key": "sensor",
+                  "value": "0",
+                  "description": "Sensor index (0-based). Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets historical level readings for a single module.\n\n**Responses:**\n- 200 OK: TankLevels object\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `id`, `startDateUtc`, or `endDateUtc` missing or invalid"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "description": "Endpoints for downloading summary reports.",
+      "item": [
+        {
+          "name": "DownloadReport",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/downloadReport?format=CSV",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "downloadReport"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "CSV",
+                  "description": "Output format. Values: Excel (default), CSV, SuburbanSoftware"
+                },
+                {
+                  "key": "excludeNonInstalled",
+                  "value": "false",
+                  "description": "Exclude non-installed devices from the report",
+                  "disabled": true
+                },
+                {
+                  "key": "includeSubCompanies",
+                  "value": "false",
+                  "description": "Include sub-company devices in the report",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Downloads a summary report as a file.\n\n**Supported formats:**\n- `Excel` (default)\n- `CSV`\n- `SuburbanSoftware`\n\n**Responses:**\n- 200 OK: Byte stream (file)\n- 204 No Content\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Return Requests",
+      "description": "Endpoints for managing device return requests.",
+      "item": [
+        {
+          "name": "GetReturnRequests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/returnRequests?isOpen=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "returnRequests"],
+              "query": [
+                {
+                  "key": "isOpen",
+                  "value": "true",
+                  "description": "Required. true = open/not completed; false = completed"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page index (0-based). Max 100 per page. Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets return requests and associated items linked to the company. Paginated at 100 per page.\n\n**ReturnRequestStatus values:**\n- 0 = Pending\n- 1 = Analyzing\n- 2 = Completed\n- 3 = RmaReady\n\n**ReturnRequestItemStatus values:**\n- 0 = Pending\n- 1 = Accepted\n- 2 = Refused\n\n**Responses:**\n- 200 OK: List of ReturnRequest objects\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "GetReturnRequest",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/returnRequests/RR00001",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "returnRequests", "RR00001"]
+            },
+            "description": "Gets a single return request by ID.\n\n**Responses:**\n- 200 OK: ReturnRequest object\n- 400 Bad Request: `id` is not valid\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "UpdateReturnRequest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/returnRequests/RR00001",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "returnRequests", "RR00001"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comment\": \"Updated comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Modifies the comment of a return request.\n\n**Responses:**\n- 200 OK: UpdateReturnRequestResult object\n- 400 Bad Request: `id` format invalid or nothing to update\n- 403 Forbidden: API key missing or invalid, or client not found"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RMAs",
+      "description": "Endpoints for managing Return Merchandise Authorizations.",
+      "item": [
+        {
+          "name": "GetRmas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/rmas?isOpen=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "rmas"],
+              "query": [
+                {
+                  "key": "isOpen",
+                  "value": "true",
+                  "description": "Required. true = open/not completed; false = completed"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page index (0-based). Max 100 per page. Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets a list of RMAs and associated items linked to the company. Paginated at 100 per page.\n\n**RmaItemStatus values:**\n- 0 = Pending Analysis\n- 1 = Being Analyzed\n- 2 = Complete\n- 3 = Pending Receipt\n- 4 = Not Received\n- 5 = Ignored\n\n**Responses:**\n- 200 OK: List of Rma objects\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "GetRma",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/rmas/RMA123",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "rmas", "RMA123"]
+            },
+            "description": "Gets a single RMA and its associated items.\n\n**Responses:**\n- 200 OK: Rma object\n- 403 Forbidden: API key or `id` missing or invalid"
+          },
+          "response": []
+        },
+        {
+          "name": "UpdateRmaItem",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/rmaItems/RMA001/devices/{{deviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "rmaItems", "RMA001", "devices", "{{deviceId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"IsReconciled\": true,\n  \"CustomerComment\": \"Base comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Modifies a RMA item's reconciliation status and/or customer comment.\n\n**URL Parameters:**\n- `rmaId`: RMA ID string (e.g., RMA001)\n- `deviceId`: Device serial number integer\n\n**Responses:**\n- 200 OK: RmaItemUpdateResult object\n- 400 Bad Request: `id` format invalid, nothing to update, or RMA ID missing\n- 403 Forbidden: API key missing or invalid"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Gas Meters",
+      "description": "Endpoints for retrieving gas meter readings.",
+      "item": [
+        {
+          "name": "GetGasMeters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json; charset=utf-8",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1.0/DataService.svc/meters?startDateUtc=2025-01-15T00:00:00Z&endDateUtc=2025-02-15T00:00:00Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1.0", "DataService.svc", "meters"],
+              "query": [
+                {
+                  "key": "startDateUtc",
+                  "value": "2025-01-15T00:00:00Z",
+                  "description": "ISO8601 UTC start date (required). Example: 2025-01-15T00:00:00Z"
+                },
+                {
+                  "key": "endDateUtc",
+                  "value": "2025-02-15T00:00:00Z",
+                  "description": "ISO8601 UTC end date (required). Example: 2025-02-15T00:00:00Z"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page index (0-based). Max 10,000 meters per page. Default: 0",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets historical readings for all modules with a gas meter sensor. Results are paginated at 10,000 meters per page.\n\n**Responses:**\n- 200 OK: GasMeters object\n- 403 Forbidden: API key missing or invalid\n- 404 Not Found: `startDateUtc` or `endDateUtc` missing or invalid"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

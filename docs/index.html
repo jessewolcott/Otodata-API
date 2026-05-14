@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Otodata Nee-Vo API v29 — Interactive Reference</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    /* ── Branding tweaks ─────────────────────────────────── */
+    body { margin: 0; }
+    .topbar { background: #1b3a6b !important; }
+    .topbar-wrapper img { display: none; }
+    .topbar-wrapper::before {
+      content: "Otodata Nee-Vo API v29";
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      padding: 0 1rem;
+    }
+    /* Callout box for the dispatch note */
+    .swagger-ui .info .description blockquote {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 0.5rem 1rem;
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+  // ── Inline OpenAPI spec ─────────────────────────────────────────────────
+  // Embedded as a JS object so this page works when opened directly from the
+  // filesystem (file://) without a web server — no CORS issues.
+  const spec = {
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Otodata Nee-Vo API",
+    "version": "29",
+    "description": "Web service for accessing Otodata Remote Tank Level Monitor (RTLM) readings and managing devices.\n\n**Authentication** — Every request (except `GET /devices/sample`) requires an API key supplied as either:\n\n- A query string parameter: `?k=YOUR_KEY`\n- An HTTP header: `Authorization: Bearer YOUR_KEY`\n\nAPI keys can be generated at https://neevo.otodata.ca/#/integrations/apikey\n\n**Response format** — The API defaults to XML. Add the header `Accept: application/json; charset=utf-8` to receive JSON.\n\n> **Implementation note:** The `createdispatch` and `canceldispatch` endpoints are documented as `POST` in the original API Blueprint but the live service only accepts `GET` for both. This spec reflects live behaviour.",
+    "contact": { "name": "Otodata", "url": "https://neevo.otodata.ca" }
+  },
+  "servers": [
+    { "url": "https://telematics.otodatanetwork.com:4431/v1.0/DataService.svc", "description": "Primary (US/International)" },
+    { "url": "https://neevo.otodata.ca/public/api/v1/DataService.svc", "description": "Primary (Canada)" },
+    { "url": "https://telematics02.otodatanetwork.com:4431/v1.0/DataService.svc", "description": "Secondary failover (US/International)" },
+    { "url": "https://neevo2.otodata.ca/public/api/v1/DataService.svc", "description": "Secondary failover (Canada)" }
+  ],
+  "security": [{ "bearerAuth": [] }, { "apiKeyQuery": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "Authorization: Bearer YOUR_API_KEY" },
+      "apiKeyQuery": { "type": "apiKey", "in": "query", "name": "k", "description": "?k=YOUR_API_KEY" }
+    },
+    "parameters": {
+      "deviceId": { "name": "id", "in": "path", "required": true, "description": "Otodata module serial number (integer).", "schema": { "type": "integer", "format": "int64" }, "example": 20008447 },
+      "sensorQuery": { "name": "sensor", "in": "query", "required": false, "description": "Sensor index (0-based). Default: 0.", "schema": { "type": "integer", "default": 0 } },
+      "pageQuery": { "name": "page", "in": "query", "required": false, "description": "Page index (0-based). Default: 0.", "schema": { "type": "integer", "default": 0 } }
+    },
+    "schemas": {
+      "Device": {
+        "type": "object",
+        "description": "A single Otodata RTLM module.",
+        "properties": {
+          "Id": { "type": "integer", "format": "int64", "example": 20008447 },
+          "Name": { "type": "string", "nullable": true, "example": "North Tank" },
+          "Address": { "type": "string", "nullable": true, "example": "123 Main St" },
+          "City": { "type": "string", "nullable": true, "example": "Montreal" },
+          "Region": { "type": "string", "nullable": true, "example": "QC" },
+          "Country": { "type": "string", "nullable": true, "example": "Canada" },
+          "PostalCode": { "type": "string", "nullable": true, "example": "H1A 1A1" },
+          "LastLevel": { "type": "number", "format": "float", "description": "Tank level fraction (0.0–1.0)", "example": 0.6543 },
+          "Inventory": { "type": "number", "format": "float", "example": 654.3 },
+          "Capacity": { "type": "number", "format": "float", "example": 1000 },
+          "Status": { "type": "string", "example": "OK" },
+          "LastRead": { "type": "string", "format": "date-time", "example": "2026-04-24T10:00:00Z" },
+          "LastFill": { "type": "string", "format": "date-time", "nullable": true, "example": "2026-03-01T08:00:00Z" },
+          "Product": { "type": "string", "nullable": true, "example": "Propane" },
+          "BatteryAlarm": { "type": "boolean", "example": false },
+          "BatteryLevel": { "type": "number", "format": "float", "example": 3.6 },
+          "IsInstalled": { "type": "boolean", "example": true },
+          "SensorTrouble": { "type": "integer", "description": "0 = no trouble", "example": 0 },
+          "SignalStrength": { "type": "integer", "description": "0–100", "example": 85 },
+          "Temperature": { "type": "number", "format": "float", "description": "Celsius", "example": 20.5 },
+          "Ullage": { "type": "number", "format": "float", "example": 346 },
+          "HoursToEmpty": { "type": "integer", "example": 720 },
+          "HoursToOptimalFill": { "type": "integer", "example": 336 },
+          "Route": { "type": "string", "nullable": true, "example": "Route A" },
+          "TankFormType": { "type": "integer", "example": 0 },
+          "TankFormatName": { "type": "string", "nullable": true, "example": "Propane 1000 gal" },
+          "TankName": { "type": "string", "nullable": true, "example": "Main Tank" },
+          "TankNumber": { "type": "string", "nullable": true, "example": "T001" },
+          "TankSerialNumber": { "type": "string", "nullable": true, "example": "SN12345" },
+          "CustomerId": { "type": "string", "nullable": true, "example": "CUST001" },
+          "IsOnCall": { "type": "boolean", "example": false },
+          "LocationName": { "type": "string", "nullable": true, "example": "Site A" },
+          "LocationNumber": { "type": "string", "nullable": true, "example": "LOC001" },
+          "SensorIndex": { "type": "integer", "example": 0 }
+        }
+      },
+      "DeviceUpdate": {
+        "type": "object",
+        "description": "Fields to update on a device. All optional — include only what you want to change.",
+        "properties": {
+          "Name": { "type": "string", "example": "North Tank" },
+          "TankFormatName": { "type": "string", "example": "Propane 1000 gal" },
+          "Address": { "type": "string", "example": "123 Main St" },
+          "City": { "type": "string", "example": "Montreal" },
+          "Region": { "type": "string", "example": "QC" },
+          "Country": { "type": "string", "example": "Canada" },
+          "PostalCode": { "type": "string", "example": "H1A 1A1" },
+          "CustomerId": { "type": "string", "example": "CUST001" },
+          "DatabaseId": { "type": "string", "example": "DB001" },
+          "Email": { "type": "string", "format": "email", "example": "customer@example.com" },
+          "GeneralLedgerLocation": { "type": "string", "example": "GL001" },
+          "IsInstalled": { "type": "boolean", "example": true },
+          "Latitude": { "type": "number", "format": "double", "example": 45.5017 },
+          "Longitude": { "type": "number", "format": "double", "example": -73.5673 },
+          "Note": { "type": "string", "example": "Additional notes" },
+          "Product": { "type": "string", "example": "Propane" },
+          "Route": { "type": "string", "example": "Route A" },
+          "TankName": { "type": "string", "example": "Main Tank" },
+          "TankNumber": { "type": "string", "example": "T001" },
+          "TankSerialNumber": { "type": "string", "example": "SN12345" },
+          "IsOnCall": { "type": "boolean", "example": false },
+          "LocationName": { "type": "string", "example": "Site A" },
+          "LocationNumber": { "type": "string", "example": "LOC001" }
+        }
+      },
+      "Warranty": {
+        "type": "object",
+        "properties": {
+          "WarrantyType": { "type": "string", "description": "0=Standard 1=Extended 2=BatteryPackOnly", "enum": ["Standard","Extended","BatteryPackOnly"], "example": "Standard" },
+          "WarrantyStatus": { "type": "string", "description": "2=NotStarted 3=Expired 4=Active 6=Voided 7=Archived", "enum": ["NotStarted","Expired","Active","Voided","Archived"], "example": "Active" },
+          "WarrantyStartDate": { "type": "string", "format": "date-time", "example": "2023-01-01T00:00:00Z" },
+          "WarrantyEndDate": { "type": "string", "format": "date-time", "example": "2025-01-01T00:00:00Z" }
+        }
+      },
+      "TankLevelLog": {
+        "type": "object",
+        "properties": {
+          "Id": { "type": "integer", "format": "int64", "example": 20008447 },
+          "Level": { "type": "number", "format": "float", "description": "0.0–1.0", "example": 0.6543 },
+          "LogDateUtc": { "type": "string", "format": "date-time", "example": "2025-01-15T10:00:00Z" },
+          "BatteryLevel": { "type": "number", "format": "float", "example": 3.6 },
+          "SensorTrouble": { "type": "integer", "example": 0 },
+          "Temperature": { "type": "number", "format": "float", "example": 20.5 },
+          "SignalStrength": { "type": "integer", "example": 85 },
+          "Value": { "type": "integer", "description": "Raw sensor value", "example": 6543 },
+          "ValueType": { "type": "integer", "example": 0 }
+        }
+      },
+      "TankLevelResponse": {
+        "type": "object",
+        "properties": {
+          "Count": { "type": "integer", "example": 2 },
+          "StartDateUtc": { "type": "string", "format": "date-time" },
+          "EndDateUtc": { "type": "string", "format": "date-time" },
+          "Id": { "type": "integer", "format": "int64", "example": 20008447 },
+          "Supplier": { "type": "string", "example": "OTODATA" },
+          "Logs": { "type": "array", "items": { "$ref": "#/components/schemas/TankLevelLog" } }
+        }
+      },
+      "ReturnRequestItem": {
+        "type": "object",
+        "properties": {
+          "SerialNumber": { "type": "integer", "format": "int64", "example": 20008447 },
+          "Status": { "type": "integer", "example": 0 },
+          "SensorStatus": { "type": "string", "example": "OK" },
+          "SensorTrouble": { "type": "integer", "example": 0 },
+          "LastActivityDate": { "type": "string", "format": "date-time" },
+          "WarrantyStatus": { "type": "integer", "description": "2=NotStarted 3=Expired 4=Active 6=Voided 7=Archived", "example": 4 },
+          "RefusalReason": { "type": "string", "nullable": true }
+        }
+      },
+      "ReturnRequest": {
+        "type": "object",
+        "properties": {
+          "CompanyName": { "type": "string", "example": "ACME Corp" },
+          "ReturnRequestNumber": { "type": "string", "example": "RR00001" },
+          "RmaNumber": { "type": "string", "nullable": true, "example": "RMA001" },
+          "CreatedDate": { "type": "string", "format": "date-time" },
+          "DeviceCount": { "type": "integer", "example": 2 },
+          "Status": { "type": "integer", "example": 0 },
+          "RequesterName": { "type": "string", "nullable": true },
+          "RequesterEmail": { "type": "string", "format": "email", "nullable": true },
+          "Comment": { "type": "string", "nullable": true },
+          "StreetAddress": { "type": "string", "nullable": true },
+          "City": { "type": "string", "nullable": true },
+          "PostalCode": { "type": "string", "nullable": true },
+          "Region": { "type": "string", "nullable": true },
+          "Country": { "type": "string", "nullable": true },
+          "ReturnRequestItems": { "type": "array", "items": { "$ref": "#/components/schemas/ReturnRequestItem" } }
+        }
+      },
+      "RmaItem": {
+        "type": "object",
+        "properties": {
+          "UpdatedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "SerialNumber": { "type": "integer", "format": "int64", "example": 20008447 },
+          "WarrantyStatus": { "type": "integer", "example": 4 },
+          "Status": { "type": "integer", "example": 0 },
+          "Conclusion": { "type": "string", "nullable": true },
+          "Trouble": { "type": "string", "nullable": true },
+          "Replacement": { "type": "string", "nullable": true },
+          "ReturnAddress": { "type": "string", "nullable": true },
+          "IsReconciled": { "type": "boolean", "example": false },
+          "CustomerComment": { "type": "string", "nullable": true },
+          "Route": { "type": "string", "nullable": true }
+        }
+      },
+      "Rma": {
+        "type": "object",
+        "properties": {
+          "RmaNumber": { "type": "string", "example": "RMA001" },
+          "CreatedDate": { "type": "string", "format": "date-time" },
+          "IsComplete": { "type": "boolean", "example": false },
+          "RmaItems": { "type": "array", "items": { "$ref": "#/components/schemas/RmaItem" } }
+        }
+      },
+      "GasMeter": {
+        "type": "object",
+        "properties": {
+          "AccountNumber": { "type": "string", "example": "ACCT001" },
+          "TankNumber": { "type": "string", "example": "T001" },
+          "SerialNumber": { "type": "integer", "format": "int64", "example": 20008447 },
+          "IndexInitialValue": { "type": "number", "format": "float", "example": 1000.0 },
+          "IndexFinalValue": { "type": "number", "format": "float", "example": 1250.0 },
+          "PulseRate": { "type": "number", "format": "float", "example": 0.1 },
+          "Volume": { "type": "number", "format": "float", "example": 25.0 },
+          "Units": { "type": "string", "example": "cubic meters" }
+        }
+      },
+      "GasMeterResponse": {
+        "type": "object",
+        "properties": {
+          "Count": { "type": "integer", "example": 1 },
+          "StartDateUtc": { "type": "string", "format": "date-time" },
+          "EndDateUtc": { "type": "string", "format": "date-time" },
+          "Supplier": { "type": "string", "example": "OTODATA" },
+          "Meters": { "type": "array", "items": { "$ref": "#/components/schemas/GasMeter" } }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "Errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Property": { "type": "string", "example": "Name" },
+                "Message": { "type": "string", "example": "Name is too long." }
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "400BadRequest": { "description": "Bad request — a required parameter is missing, invalid, or malformed." },
+      "403Forbidden": { "description": "Forbidden — the API key is missing or invalid." },
+      "404NotFound": { "description": "Not found — the requested resource does not exist." },
+      "UpdateSuccess": {
+        "description": "Success. Returns an Errors array (empty when no errors occurred).",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "Errors": [] } } }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Devices", "description": "Core device management — list, inspect, update, reset, and dispatch operations." },
+    { "name": "Tank Levels", "description": "Historical tank level readings for all devices or a specific device." },
+    { "name": "Reports", "description": "Downloadable summary reports in Excel, CSV, or Suburban Software format." },
+    { "name": "Return Requests", "description": "Customer-initiated return requests and their associated device line items." },
+    { "name": "RMAs", "description": "Return Merchandise Authorizations including reconciliation and comment tracking." },
+    { "name": "Gas Meters", "description": "Historical volumetric readings from devices with gas meter sensors." }
+  ],
+  "paths": {
+    "/devices": {
+      "get": {
+        "operationId": "GetDevices", "summary": "Get all devices", "tags": ["Devices"],
+        "description": "Returns all modules linked to the authenticated company. Optionally filter by `lastDateUtc` for incremental syncs.",
+        "parameters": [{ "name": "lastDateUtc", "in": "query", "required": false, "description": "ISO8601 UTC date. Only return devices updated after this timestamp.", "schema": { "type": "string", "format": "date-time" } }],
+        "responses": {
+          "200": { "description": "Array of device objects.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Device" } } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      }
+    },
+    "/devices/sample": {
+      "get": {
+        "operationId": "GetSampleDevice", "summary": "Get sample device (no auth required)", "tags": ["Devices"],
+        "description": "Returns a dummy module populated with synthetic data. No authentication required.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Synthetic device object.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Device" }, "example": { "Id": 999999, "Name": "Sample Device", "LastLevel": 0.5, "Inventory": 500, "Capacity": 1000, "Status": "OK" } } } }
+        }
+      }
+    },
+    "/devices/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }, { "$ref": "#/components/parameters/sensorQuery" }],
+      "get": {
+        "operationId": "GetDevice", "summary": "Get a single device", "tags": ["Devices"],
+        "description": "Returns a single module by its serial number.",
+        "responses": {
+          "200": { "description": "Device object.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Device" } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      },
+      "post": {
+        "operationId": "UpdateDevice", "summary": "Update device properties", "tags": ["Devices"],
+        "description": "Modifies a module's customer-configurable properties. Include only fields you want to change.",
+        "parameters": [{ "name": "enforceValidation", "in": "query", "required": false, "description": "When true, aborts the entire update if any field fails validation.", "schema": { "type": "boolean" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeviceUpdate" } } } },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UpdateSuccess" },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      }
+    },
+    "/devices/{id}/warranties": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }],
+      "get": {
+        "operationId": "GetDeviceWarranties", "summary": "Get device warranties", "tags": ["Devices"],
+        "description": "Returns warranty history for a module, newest to oldest.\n\n**WarrantyType:** 0=Standard 1=Extended 2=BatteryPackOnly\n\n**WarrantyStatus:** 2=NotStarted 3=Expired 4=Active 6=Voided 7=Archived",
+        "responses": {
+          "200": { "description": "Array of warranty records.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Warranty" } } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      }
+    },
+    "/devices/{id}/reset": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }],
+      "post": {
+        "operationId": "ResetDevice", "summary": "Reset device customer data", "tags": ["Devices"],
+        "description": "**Destructive.** Clears all customer-assigned data for a device. Pass an `Exclude` array to preserve specific fields.",
+        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "Exclude": { "type": "array", "items": { "type": "string" }, "example": ["Name","TankSerialNumber"] } } } } } },
+        "responses": {
+          "200": { "description": "Reset successful. Empty response body." },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      }
+    },
+    "/devices/{id}/createdispatch": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }, { "$ref": "#/components/parameters/sensorQuery" }],
+      "get": {
+        "operationId": "CreateDispatch", "summary": "Create a dispatch", "tags": ["Devices"],
+        "description": "Creates a dispatch for a device — sends push notifications to end-users and fires integration events.\n\n> **Note:** Documented as POST in the API Blueprint; live service only accepts GET.",
+        "responses": {
+          "200": { "description": "Dispatch created. Empty response body." },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      }
+    },
+    "/devices/{id}/canceldispatch": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }, { "$ref": "#/components/parameters/sensorQuery" }],
+      "get": {
+        "operationId": "CancelDispatch", "summary": "Cancel a dispatch", "tags": ["Devices"],
+        "description": "Cancels an active dispatch. Fires integration events but no push notification.\n\n> **Note:** Documented as POST in the API Blueprint; live service only accepts GET.",
+        "responses": {
+          "200": { "description": "Dispatch cancelled. Empty response body." },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "$ref": "#/components/responses/404NotFound" }
+        }
+      }
+    },
+    "/tanklevels": {
+      "get": {
+        "operationId": "GetTankLevels", "summary": "Get tank level history (all devices)", "tags": ["Tank Levels"],
+        "description": "Gets historical level readings for all modules within the specified date range. Paginated at 10,000 readings per page.",
+        "parameters": [
+          { "name": "startDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC start date. Example: 2025-01-01T00:00:00Z", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC end date.", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/pageQuery" }
+        ],
+        "responses": {
+          "200": { "description": "Tank level history.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TankLevelResponse" } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "description": "Missing or invalid startDateUtc / endDateUtc." }
+        }
+      }
+    },
+    "/devices/{id}/tanklevels": {
+      "parameters": [{ "$ref": "#/components/parameters/deviceId" }, { "$ref": "#/components/parameters/sensorQuery" }],
+      "get": {
+        "operationId": "GetDeviceTankLevels", "summary": "Get tank level history (single device)", "tags": ["Tank Levels"],
+        "description": "Gets historical level readings for a single module within the specified date range.",
+        "parameters": [
+          { "name": "startDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC start date.", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC end date.", "schema": { "type": "string", "format": "date-time" } }
+        ],
+        "responses": {
+          "200": { "description": "Tank level history for the device.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TankLevelResponse" } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "description": "Missing or invalid id / startDateUtc / endDateUtc." }
+        }
+      }
+    },
+    "/downloadReport": {
+      "get": {
+        "operationId": "DownloadReport", "summary": "Download summary report", "tags": ["Reports"],
+        "description": "Downloads a snapshot summary report as a binary file.\n\n**Formats:** `Excel` (default .xlsx), `CSV`, `SuburbanSoftware` (.csv compatible with Suburban Software dispatch).\n\nA 204 response means no reportable data is available.",
+        "parameters": [
+          { "name": "format", "in": "query", "required": false, "description": "Report format.", "schema": { "type": "string", "enum": ["Excel","CSV","SuburbanSoftware"], "default": "Excel" } },
+          { "name": "excludeNonInstalled", "in": "query", "required": false, "schema": { "type": "boolean" } },
+          { "name": "includeSubCompanies", "in": "query", "required": false, "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Report file byte stream.", "content": { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { "schema": { "type": "string", "format": "binary" } }, "text/csv": { "schema": { "type": "string" } } } },
+          "204": { "description": "No content available." },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      }
+    },
+    "/returnRequests": {
+      "get": {
+        "operationId": "GetReturnRequests", "summary": "List return requests", "tags": ["Return Requests"],
+        "description": "Gets return requests linked to the company. Paginated at 100 records per page.",
+        "parameters": [
+          { "name": "isOpen", "in": "query", "required": true, "description": "true = open/pending, false = completed.", "schema": { "type": "boolean" } },
+          { "$ref": "#/components/parameters/pageQuery" }
+        ],
+        "responses": {
+          "200": { "description": "Array of return requests.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ReturnRequest" } } } } },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      }
+    },
+    "/returnRequests/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "description": "Return request number. Example: RR00001.", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "GetReturnRequest", "summary": "Get a single return request", "tags": ["Return Requests"],
+        "description": "Gets a single return request by ID, including all line items.",
+        "responses": {
+          "200": { "description": "Return request.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReturnRequest" } } } },
+          "400": { "$ref": "#/components/responses/400BadRequest" },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      },
+      "post": {
+        "operationId": "UpdateReturnRequest", "summary": "Update return request comment", "tags": ["Return Requests"],
+        "description": "Updates the comment field of a return request.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["Comment"], "properties": { "Comment": { "type": "string", "example": "Devices shipped 2026-05-14 via FedEx" } } } } } },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UpdateSuccess" },
+          "400": { "description": "Invalid id format or no updatable fields." },
+          "403": { "description": "API key invalid or client not found." }
+        }
+      }
+    },
+    "/rmas": {
+      "get": {
+        "operationId": "GetRmas", "summary": "List RMAs", "tags": ["RMAs"],
+        "description": "Gets RMAs linked to the company. Paginated at 100 records per page.",
+        "parameters": [
+          { "name": "isOpen", "in": "query", "required": true, "description": "true = open, false = completed.", "schema": { "type": "boolean" } },
+          { "$ref": "#/components/parameters/pageQuery" }
+        ],
+        "responses": {
+          "200": { "description": "Array of RMA objects.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Rma" } } } } },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      }
+    },
+    "/rmas/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "description": "RMA number. Example: RMA001.", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "GetRma", "summary": "Get a single RMA", "tags": ["RMAs"],
+        "description": "Gets a single RMA and all of its associated line items.",
+        "responses": {
+          "200": { "description": "RMA object.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Rma" } } } },
+          "403": { "description": "API key or RMA ID missing or invalid." }
+        }
+      }
+    },
+    "/rmaItems/{rmaId}/devices/{deviceId}": {
+      "parameters": [
+        { "name": "rmaId", "in": "path", "required": true, "description": "RMA number. Example: RMA001.", "schema": { "type": "string" } },
+        { "name": "deviceId", "in": "path", "required": true, "description": "Device serial number.", "schema": { "type": "integer", "format": "int64" } }
+      ],
+      "post": {
+        "operationId": "UpdateRmaItem", "summary": "Update an RMA line item", "tags": ["RMAs"],
+        "description": "Updates reconciliation status and/or customer comment on an RMA line item.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "IsReconciled": { "type": "boolean", "example": true }, "CustomerComment": { "type": "string", "example": "Confirmed received 2026-05-14" } } } } }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UpdateSuccess" },
+          "400": { "description": "Invalid id format, nothing to update, or RMA ID missing." },
+          "403": { "$ref": "#/components/responses/403Forbidden" }
+        }
+      }
+    },
+    "/meters": {
+      "get": {
+        "operationId": "GetGasMeters", "summary": "Get gas meter readings", "tags": ["Gas Meters"],
+        "description": "Gets historical volumetric readings for all gas meter modules. Paginated at 10,000 records per page.",
+        "parameters": [
+          { "name": "startDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC start date.", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endDateUtc", "in": "query", "required": true, "description": "ISO8601 UTC end date.", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/pageQuery" }
+        ],
+        "responses": {
+          "200": { "description": "Gas meter response.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GasMeterResponse" } } } },
+          "403": { "$ref": "#/components/responses/403Forbidden" },
+          "404": { "description": "Missing or invalid startDateUtc / endDateUtc." }
+        }
+      }
+    }
+  }
+};
+  // ── Boot Swagger UI ──────────────────────────────────────────────────────
+  window.onload = function () {
+    SwaggerUIBundle({
+      spec: spec,
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+      layout: "StandaloneLayout",
+      defaultModelsExpandDepth: 1,
+      defaultModelExpandDepth: 2,
+      docExpansion: "list",
+      filter: true,
+      tryItOutEnabled: false
+    });
+  };
+  </script>
+</body>
+</html>

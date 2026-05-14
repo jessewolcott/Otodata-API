@@ -1,0 +1,31 @@
+# ── Source junk ────────────────────────────────────────────────────────────
+*.pdf
+
+# ── Downloaded reports ─────────────────────────────────────────────────────
+*.csv
+*.xlsx
+
+# ── Postman files (may contain credentials) ───────────────────────────────
+*.postman_collection.json
+*.postman_environment.json
+# Keep the committed sandbox collection
+!Source/*.postman_collection.json
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# ── IDE / editor ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store

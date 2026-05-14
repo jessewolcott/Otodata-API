@@ -1,0 +1,788 @@
+FORMAT: 1A
+HOST: https://telematics.otodatanetwork.com:4431
+
+# Otodata Nee-Vo API v29
+
+Web service for accessing Otodata Remote Tank Level Monitor (RTLM) readings and managing devices.
+
+Modified: April 24, 2026
+
+## Base URLs
+
+**Primary Server**
+- `https://neevo.otodata.ca/public/api/v1/DataService.svc`
+- `https://telematics.otodatanetwork.com:4431/v1.0/DataService.svc`
+
+**Secondary Server**
+- `https://neevo2.otodata.ca/public/api/v1/DataService.svc`
+- `https://telematics02.otodatanetwork.com:4431/v1.0/DataService.svc`
+
+## Authentication
+
+All requests require an API Key provided either:
+
+1. As a URL query parameter: `?k=API_KEY`
+2. As an HTTP header: `Authorization: Bearer API_KEY`
+
+API Keys can be generated at: https://neevo.otodata.ca/#/integrations/apikey
+
+## Response Format
+
+Default format is XML. For JSON, include the header:
+```
+Accept: application/json; charset=utf-8
+```
+
+For compressed responses:
+```
+Accept-Encoding: gzip
+```
+
+# Group Devices
+
+## Devices Collection [/v1.0/DataService.svc/devices{?k,lastDateUtc}]
+
+### GetDevices [GET]
+
+Returns a list of all modules linked to the authenticated company.
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + lastDateUtc (string, optional) - ISO8601 date (UTC) filter. Example: `2018-11-22T13:00:00Z`
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            [
+              {
+                "Id": 123456,
+                "Name": "Demo Tank",
+                "Address": "123 Main St",
+                "City": "Montreal",
+                "Region": "QC",
+                "Country": "Canada",
+                "PostalCode": "H1A 1A1",
+                "LastLevel": 0.6543,
+                "Inventory": 654.3,
+                "Capacity": 1000,
+                "Status": "OK",
+                "LastRead": "2026-04-24T10:00:00Z",
+                "LastFill": "2026-03-01T08:00:00Z",
+                "Product": "Propane",
+                "BatteryAlarm": false,
+                "BatteryLevel": 3.6,
+                "IsInstalled": true,
+                "SensorTrouble": 0,
+                "SignalStrength": 85,
+                "Temperature": 20.5,
+                "Ullage": 346,
+                "HoursToEmpty": 720,
+                "HoursToOptimalFill": 336,
+                "Route": "Route A",
+                "TankFormType": 0,
+                "TankFormatName": "Propane 1000 gal",
+                "TankName": "Main Tank",
+                "TankNumber": "T001",
+                "TankSerialNumber": "SN12345",
+                "CustomerId": "CUST001",
+                "IsOnCall": false,
+                "LocationName": "Site A",
+                "LocationNumber": "LOC001"
+              }
+            ]
+
++ Response 400 (application/json)
+    Parameter `lastDateUtc` does not follow ISO8601 format.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
+## Device [/v1.0/DataService.svc/devices/{id}{?k,sensor}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + sensor (integer, optional) - Sensor index. Default: `0`
+
+### GetDevice [GET]
+
+Returns a single module.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Id": 123456,
+              "Name": "Demo Tank",
+              "Address": "123 Main St",
+              "City": "Montreal",
+              "Region": "QC",
+              "Country": "Canada",
+              "PostalCode": "H1A 1A1",
+              "LastLevel": 0.6543,
+              "Inventory": 654.3,
+              "Capacity": 1000,
+              "Status": "OK",
+              "LastRead": "2026-04-24T10:00:00Z",
+              "LastFill": "2026-03-01T08:00:00Z",
+              "Product": "Propane",
+              "BatteryAlarm": false,
+              "BatteryLevel": 3.6,
+              "IsInstalled": true,
+              "SensorTrouble": 0,
+              "SignalStrength": 85,
+              "Temperature": 20.5,
+              "Ullage": 346,
+              "SensorIndex": 0,
+              "LocationName": "Site A",
+              "LocationNumber": "LOC001"
+            }
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+### UpdateDevice [POST]
+
+Modify a module's properties.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
+    + Body
+
+            {
+              "Name": "Demo name for tank #123456",
+              "TankFormatName": "Propane 1000 gal",
+              "Address": "123 Main St",
+              "City": "Montreal",
+              "Region": "QC",
+              "Country": "Canada",
+              "PostalCode": "H1A 1A1",
+              "CustomerId": "CUST001",
+              "DatabaseId": "DB001",
+              "Email": "customer@example.com",
+              "GeneralLedgerLocation": "GL001",
+              "IsInstalled": true,
+              "Latitude": 45.5017,
+              "Longitude": -73.5673,
+              "Note": "Additional notes",
+              "Product": "Propane",
+              "Route": "Route A",
+              "TankName": "Main Tank",
+              "TankNumber": "T001",
+              "TankSerialNumber": "SN12345",
+              "IsOnCall": false,
+              "LocationName": "Site A",
+              "LocationNumber": "LOC001"
+            }
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Errors": []
+            }
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+## Sample Device [/v1.0/DataService.svc/devices/sample]
+
+### GetSampleDevice [GET]
+
+Returns a dummy module for testing purposes. No authentication required.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Id": 999999,
+              "Name": "Sample Device",
+              "LastLevel": 0.5,
+              "Inventory": 500,
+              "Capacity": 1000,
+              "Status": "OK"
+            }
+
+## Device Warranties [/v1.0/DataService.svc/devices/{id}/warranties{?k}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+
+### GetDeviceWarranties [GET]
+
+Returns the warranty history for a module, ordered newest to oldest.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            [
+              {
+                "WarrantyType": "Standard",
+                "WarrantyStatus": "Active",
+                "WarrantyStartDate": "2023-01-01T00:00:00Z",
+                "WarrantyEndDate": "2025-01-01T00:00:00Z"
+              }
+            ]
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+## Reset Device [/v1.0/DataService.svc/devices/{id}/reset{?k}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+
+### ResetDevice [POST]
+
+Clears all customer data from the Nee-Vo database for a device. Optionally exclude specific properties from being reset.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
+    + Body
+
+            {
+              "Exclude": ["Name", "TankSerialNumber"]
+            }
+
++ Response 200
+    Empty response body on success.
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+## Create Dispatch [/v1.0/DataService.svc/devices/{id}/createdispatch{?k,sensor}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + sensor (integer, optional) - Sensor index. Default: `0`
+
+### CreateDispatch [POST]
+
+Creates a dispatch for a device. Sends a push notification to end-users with notifications enabled. Also triggers integration events if enabled.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200
+    Empty response body on success.
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+## Cancel Dispatch [/v1.0/DataService.svc/devices/{id}/canceldispatch{?k,sensor}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + sensor (integer, optional) - Sensor index. Default: `0`
+
+### CancelDispatch [POST]
+
+Cancels a dispatch for a device. No push notification is sent. Triggers integration events if enabled.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200
+    Empty response body on success.
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameter `id` is missing or invalid.
+
+# Group Tank Levels
+
+## Tank Levels [/v1.0/DataService.svc/tanklevels{?k,startDateUtc,endDateUtc,page}]
+
+### GetTankLevels [GET]
+
+Gets historical level readings for all modules linked to the company. Results are paginated at 10,000 readings per page.
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + startDateUtc (string, required) - ISO8601 date (UTC). Example: `2018-04-25T08:30:00Z`
+    + endDateUtc (string, required) - ISO8601 date (UTC). Example: `2019-01-10T20:30:00Z`
+    + page (integer, optional) - Page index (0-based). Default: `0`
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Count": 2,
+              "StartDateUtc": "2018-04-25T08:30:00Z",
+              "EndDateUtc": "2019-01-10T20:30:00Z",
+              "Id": 123456,
+              "Supplier": "OTODATA",
+              "Logs": [
+                {
+                  "Id": 123456,
+                  "Level": 0.6543,
+                  "LogDateUtc": "2018-05-20T10:00:00Z",
+                  "BatteryLevel": 3.6,
+                  "SensorTrouble": 0,
+                  "Temperature": 20.5,
+                  "SignalStrength": 85,
+                  "Value": 6543,
+                  "ValueType": 0
+                }
+              ]
+            }
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameters `startDateUtc` or `endDateUtc` are missing or invalid.
+
+## Device Tank Levels [/v1.0/DataService.svc/devices/{id}/tanklevels{?k,startDateUtc,endDateUtc,sensor}]
+
++ Parameters
+    + id (integer, required) - Otodata module serial number. Example: `123456`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + startDateUtc (string, required) - ISO8601 date (UTC). Example: `2018-04-25T08:30:00Z`
+    + endDateUtc (string, required) - ISO8601 date (UTC). Example: `2019-01-10T20:30:00Z`
+    + sensor (integer, optional) - Sensor index. Default: `0`
+
+### GetDeviceTankLevels [GET]
+
+Gets historical level readings for a single module.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Count": 1,
+              "StartDateUtc": "2018-05-20T10:00:00Z",
+              "EndDateUtc": "2019-01-10T20:30:00Z",
+              "Id": 123456,
+              "Supplier": "OTODATA",
+              "Logs": [
+                {
+                  "Id": 123456,
+                  "Level": 0.6543,
+                  "LogDateUtc": "2018-05-20T10:00:00Z",
+                  "BatteryLevel": 3.6,
+                  "SensorTrouble": 0,
+                  "Temperature": 20.5,
+                  "SignalStrength": 85,
+                  "Value": 6543,
+                  "ValueType": 0
+                }
+              ]
+            }
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameters `id`, `startDateUtc`, or `endDateUtc` are missing or invalid.
+
+# Group Reports
+
+## Download Report [/v1.0/DataService.svc/downloadReport{?k,format,excludeNonInstalled,includeSubCompanies}]
+
+### DownloadReport [GET]
+
+Downloads a summary report. Supported formats: `Excel` (default), `CSV`, `SuburbanSoftware`.
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + format (string, optional) - Output format. Values: `Excel`, `CSV`, `SuburbanSoftware`. Default: `Excel`
+    + excludeNonInstalled (boolean, optional) - Exclude non-installed devices.
+    + includeSubCompanies (boolean, optional) - Include sub-company devices.
+
++ Request
+    + Headers
+
+            Authorization: Bearer API_KEY
+
++ Response 200
+    Byte stream containing the report file.
+
++ Response 204
+    No content available.
+
++ Response 403
+    Parameter `k` is missing or invalid.
+
+# Group Return Requests
+
+## Return Requests [/v1.0/DataService.svc/returnRequests{?k,isOpen,page}]
+
+### GetReturnRequests [GET]
+
+Gets return requests and associated items linked to the company. Results paginated at 100 per page (or 10,000 if setting not configured).
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + isOpen (boolean, required) - `true` = open/not completed, `false` = completed.
+    + page (integer, optional) - Page index (0-based). Default: `0`
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            [
+              {
+                "CompanyName": "ACME Corp",
+                "ReturnRequestNumber": "RR00001",
+                "RmaNumber": "RMA001",
+                "CreatedDate": "2026-01-15T10:00:00Z",
+                "DeviceCount": 2,
+                "Status": 0,
+                "RequesterName": "John Doe",
+                "RequesterEmail": "john.doe@example.com",
+                "Comment": "Faulty devices",
+                "StreetAddress": "123 Main St",
+                "City": "Montreal",
+                "PostalCode": "H1A 1A1",
+                "Region": "QC",
+                "Country": "Canada",
+                "ReturnRequestItems": [
+                  {
+                    "SerialNumber": 123456,
+                    "Status": 0,
+                    "SensorStatus": "OK",
+                    "SensorTrouble": 0,
+                    "LastActivityDate": "2026-01-10T10:00:00Z",
+                    "WarrantyStatus": 4,
+                    "RefusalReason": null
+                  }
+                ]
+              }
+            ]
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
+## Return Request [/v1.0/DataService.svc/returnRequests/{id}{?k}]
+
++ Parameters
+    + id (string, required) - Return request ID. Example: `RR00001`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+
+### GetReturnRequest [GET]
+
+Gets a single return request by ID.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "CompanyName": "ACME Corp",
+              "ReturnRequestNumber": "RR00001",
+              "RmaNumber": "RMA001",
+              "CreatedDate": "2026-01-15T10:00:00Z",
+              "DeviceCount": 1,
+              "Status": 0,
+              "RequesterName": "John Doe",
+              "RequesterEmail": "john.doe@example.com",
+              "Comment": "Faulty device",
+              "StreetAddress": "123 Main St",
+              "City": "Montreal",
+              "PostalCode": "H1A 1A1",
+              "Region": "QC",
+              "Country": "Canada",
+              "ReturnRequestItems": []
+            }
+
++ Response 400 (application/json)
+    Parameter `id` is not an integer.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
+### UpdateReturnRequest [POST]
+
+Modifies the comment of a return request.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
+    + Body
+
+            {
+              "Comment": "Updated comment"
+            }
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Errors": []
+            }
+
++ Response 400 (application/json)
+    Format of `id` is invalid, or nothing to update.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid, or client not found.
+
+# Group RMAs
+
+## RMAs [/v1.0/DataService.svc/rmas{?k,isOpen,page}]
+
+### GetRmas [GET]
+
+Gets a list of RMAs and associated items linked to the company. Results paginated at 100 per page.
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + isOpen (boolean, required) - `true` = open/not completed, `false` = completed.
+    + page (integer, optional) - Page index (0-based). Default: `0`
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            [
+              {
+                "RmaNumber": "RMA001",
+                "CreatedDate": "2026-01-15T10:00:00Z",
+                "IsComplete": false,
+                "RmaItems": [
+                  {
+                    "UpdatedDate": "2026-01-20T10:00:00Z",
+                    "SerialNumber": 123456,
+                    "WarrantyStatus": 4,
+                    "Status": 0,
+                    "Conclusion": null,
+                    "Trouble": null,
+                    "Replacement": null,
+                    "ReturnAddress": "123 Main St",
+                    "IsReconciled": false,
+                    "CustomerComment": null,
+                    "Route": "Route A"
+                  }
+                ]
+              }
+            ]
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
+## RMA [/v1.0/DataService.svc/rmas/{id}{?k}]
+
++ Parameters
+    + id (string, required) - RMA ID. Example: `RMA123`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+
+### GetRma [GET]
+
+Gets a single RMA and its associated items.
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "RmaNumber": "RMA123",
+              "CreatedDate": "2026-01-15T10:00:00Z",
+              "IsComplete": false,
+              "RmaItems": []
+            }
+
++ Response 403 (application/json)
+    Parameter `k` or `id` is missing or invalid.
+
+## RMA Item [/v1.0/DataService.svc/rmaItems/{rmaId}/devices/{deviceId}{?k}]
+
++ Parameters
+    + rmaId (string, required) - RMA ID. Example: `RMA001`
+    + deviceId (integer, required) - Device serial number. Example: `12345678`
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+
+### UpdateRmaItem [POST]
+
+Modifies a RMA item.
+
++ Request (application/json)
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
+    + Body
+
+            {
+              "IsReconciled": true,
+              "CustomerComment": "Base comment"
+            }
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Errors": []
+            }
+
++ Response 400 (application/json)
+    Format of `id` is invalid, nothing to update, or RMA ID is missing.
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
+# Group Gas Meters
+
+## Gas Meters [/v1.0/DataService.svc/meters{?k,startDateUtc,endDateUtc,page}]
+
+### GetGasMeters [GET]
+
+Gets historical level readings for all modules with a gas meter sensor. Results paginated at 10,000 meters per page.
+
++ Parameters
+    + k (string, optional) - API Key. Can be set in the Authorization header instead.
+    + startDateUtc (string, required) - ISO8601 date (UTC). Example: `2025-01-15T00:00:00Z`
+    + endDateUtc (string, required) - ISO8601 date (UTC). Example: `2025-02-15T00:00:00Z`
+    + page (integer, optional) - Page index (0-based). Default: `0`
+
++ Request
+    + Headers
+
+            Accept: application/json; charset=utf-8
+            Authorization: Bearer API_KEY
+
++ Response 200 (application/json)
+    + Body
+
+            {
+              "Count": 1,
+              "StartDateUtc": "2025-01-15T00:00:00Z",
+              "EndDateUtc": "2025-02-15T00:00:00Z",
+              "Supplier": "OTODATA",
+              "Meters": [
+                {
+                  "AccountNumber": "ACCT001",
+                  "TankNumber": "T001",
+                  "SerialNumber": 123456,
+                  "IndexInitialValue": 1000.0,
+                  "IndexFinalValue": 1250.0,
+                  "PulseRate": 0.1,
+                  "Volume": 25.0,
+                  "Units": "cubic meters"
+                }
+              ]
+            }
+
++ Response 403 (application/json)
+    Parameter `k` is missing or invalid.
+
++ Response 404 (application/json)
+    Parameters `startDateUtc` or `endDateUtc` are missing or invalid.
